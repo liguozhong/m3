@@ -27,4 +27,10 @@ type Options interface {
 
 	// ToVersion1_1 returns the value of toVersion1_1 migration option
 	ToVersion1_1() bool
+
+	// SetConcurrency sets the number of concurrent workers performing migrations
+	SetConcurrency(value int) Options
+
+	// Concurrency gets the number of concurrent workers performing migrations
+	Concurrency() int
 }

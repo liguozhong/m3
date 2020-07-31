@@ -82,8 +82,6 @@ type fileSystemSourceMetrics struct {
 	persistedIndexBlocksWrite tally.Counter
 }
 
-type shardsInfoFilesResult map[uint32][]fs.ReadInfoFileResult
-
 func newFileSystemSource(opts Options) (bootstrap.Source, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
@@ -690,7 +688,7 @@ func (s *fileSystemSource) read(
 	shardsTimeRanges result.ShardTimeRanges,
 	runOpts bootstrap.RunOptions,
 	builder *result.IndexBuilder,
-	infoFilesByNamespace map[ident.ID]shardsInfoFilesResult,
+	infoFilesByNamespace map[namespace.Metadata]ShardsInfoFilesResult,
 ) (*runResult, error) {
 	var (
 		seriesCachePolicy = s.opts.ResultOptions().SeriesCachePolicy()
@@ -770,7 +768,7 @@ func (s *fileSystemSource) newReader() (fs.DataFileSetReader, error) {
 func (s *fileSystemSource) bootstrapDataRunResultFromAvailability(
 	md namespace.Metadata,
 	shardsTimeRanges result.ShardTimeRanges,
-	infoFilesByNamespace map[ident.ID]shardsInfoFilesResult,
+	infoFilesByNamespace map[namespace.Metadata]ShardsInfoFilesResult,
 ) *runResult {
 	runResult := newRunResult()
 	unfulfilled := runResult.data.Unfulfilled()
@@ -778,7 +776,7 @@ func (s *fileSystemSource) bootstrapDataRunResultFromAvailability(
 		if ranges.IsEmpty() {
 			continue
 		}
-		availability := s.shardAvailabilityWithInfoFiles(md.ID(), shard, ranges, infoFilesByNamespace[md.ID()][shard])
+		availability := s.shardAvailabilityWithInfoFiles(md.ID(), shard, ranges, infoFilesByNamespace[md][shard])
 		remaining := ranges.Clone()
 		remaining.RemoveRanges(availability)
 		if !remaining.IsEmpty() {
@@ -901,24 +899,24 @@ func (s *fileSystemSource) bootstrapFromIndexPersistedBlocks(
 
 func (s *fileSystemSource) loadInfoFiles(
 	namespaces bootstrap.Namespaces,
-) map[ident.ID]shardsInfoFilesResult {
+) map[namespace.Metadata]ShardsInfoFilesResult {
 	// NB(nate): Info files are currently only used if CacheAll is not set as the cache policy.
 	// Therefore, don't perform load when not necessary.
 	if s.opts.ResultOptions().SeriesCachePolicy() == series.CacheAll {
 		return nil
 	}
 
-	infoFilesByNamespace := make(map[ident.ID]shardsInfoFilesResult)
+	infoFilesByNamespace := make(map[namespace.Metadata]ShardsInfoFilesResult)
 	for _, elem := range namespaces.Namespaces.Iter() {
 		namespace := elem.Value()
 		shardTimeRanges := namespace.DataRunOptions.ShardTimeRanges
-		result := make(shardsInfoFilesResult, shardTimeRanges.Len())
+		result := make(ShardsInfoFilesResult, shardTimeRanges.Len())
 		for shard := range shardTimeRanges.Iter() {
 			result[shard] = fs.ReadInfoFiles(s.fsopts.FilePathPrefix(),
 				namespace.Metadata.ID(), shard, s.fsopts.InfoReaderBufferSize(), s.fsopts.DecodingOptions())
 		}
 
-		infoFilesByNamespace[namespace.Metadata.ID()] = result
+		infoFilesByNamespace[namespace.Metadata] = result
 	}
 
 	return infoFilesByNamespace

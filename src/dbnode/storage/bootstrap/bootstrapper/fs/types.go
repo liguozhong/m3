@@ -32,6 +32,9 @@ import (
 	"github.com/m3db/m3/src/x/instrument"
 )
 
+// ShardsInfoFilesResult is a map mapping shards to info files
+type ShardsInfoFilesResult map[uint32][]fs.ReadInfoFileResult
+
 // Options represents the options for bootstrapping from the filesystem.
 type Options interface {
 	// Validate validates the options are correct

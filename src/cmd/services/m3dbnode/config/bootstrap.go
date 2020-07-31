@@ -45,6 +45,9 @@ import (
 var (
 	// defaultNumProcessorsPerCPU is the default number of processors per CPU.
 	defaultNumProcessorsPerCPU = 0.125
+
+	// defaultMigrationConcurrency is the default number of concurrent workers to perform migrations
+	defaultMigrationConcurrency = 10
 )
 
 // BootstrapConfiguration specifies the config for bootstrappers.
@@ -84,7 +87,7 @@ func (c BootstrapFilesystemConfiguration) migrations() BootstrapMigrations {
 	if cfg := c.Migrations; cfg != nil {
 		return *cfg
 	}
-	return BootstrapMigrations{}
+	return BootstrapMigrations{Concurrency: defaultMigrationConcurrency}
 }
 
 func newDefaultBootstrapFilesystemConfiguration() BootstrapFilesystemConfiguration {
@@ -99,11 +102,16 @@ type BootstrapMigrations struct {
 	// ToVersion1_1 indicates that we should attempt to upgrade filesets to
 	// what’s expected of 1.1 files
 	ToVersion1_1 bool `yaml:"toVersion1_1"`
+
+	// Concurrency sets the number of concurrent workers performing migrations
+	Concurrency int `yaml:"concurrency"`
 }
 
 // NewOptions generates migration.Options from the configuration
 func (m BootstrapMigrations) NewOptions() migration.Options {
-	return migration.NewOptions().SetToVersion1_1(m.ToVersion1_1)
+	return migration.NewOptions().
+		SetToVersion1_1(m.ToVersion1_1).
+		SetConcurrency(m.Concurrency)
 }
 
 // BootstrapCommitlogConfiguration specifies config for the commitlog bootstrapper.
